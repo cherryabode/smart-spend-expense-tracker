@@ -75,8 +75,8 @@ expense_tracker/
 ### Clone the Repository
 
 ```bash
-git clone <your-repo-link>
-cd expense_tracker
+git clone https://github.com/anandita-n/smart-spend-expense-tracker.git
+cd smart-spend-expense-tracker
 
 ### Backend setup
 cd backend
