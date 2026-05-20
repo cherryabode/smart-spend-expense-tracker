@@ -1,0 +1,39 @@
+pipeline {
+    agent any
+    environment {
+        // PUT YOUR ACTUAL DOCKER HUB USERNAME HERE:
+        DOCKER_HUB_USER = 'cherryabode' 
+        DOCKER_CREDENTIALS = 'docker-hub-credentials'
+        IMAGE_NAME = 'smart-spend-backend'
+    }
+    stages {
+        stage('Checkout Code') {
+            steps { checkout scm }
+        }
+        stage('Dependency Check') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'DP-Check'
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh '/opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectKey=smart-spend -Dsonar.sources=.'
+                }
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest ."
+            }
+        }
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS}", usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh "echo \$PASS | docker login -u \$USER --password-stdin"
+                    sh "docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
+                }
+            }
+        }
+    }
+}
