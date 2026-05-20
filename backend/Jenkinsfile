@@ -16,9 +16,12 @@ pipeline {
             }
         }
         stage('SonarQube Analysis') {
+            environment {
+                scannerHome = tool 'sonar-scanner'
+            }
             steps {
                 withSonarQubeEnv('sonar-server') {
-                    bat '/opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectKey=smart-spend -Dsonar.sources=.'
+                    bat "\"${scannerHome}\\bin\\sonar-scanner.bat\" -Dsonar.projectKey=smart-spend -Dsonar.sources=."
                 }
             }
         }
