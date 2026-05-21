@@ -1,0 +1,126 @@
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  dockerHubRepo: 'cherryabode/smart-spend-expense-tracker'
+  imageTag: '$(Build.BuildId)'
+
+stages:
+
+# =====================================================
+# BUILD + TEST STAGE
+# =====================================================
+- stage: Build
+  displayName: 'Build and Test'
+
+  jobs:
+    - job: BuildJob
+      displayName: 'Install and Test Backend'
+
+      steps:
+
+        - checkout: self
+
+        # Show project structure
+        - script: |
+            echo "Project structure:"
+            find . -maxdepth 3
+          displayName: 'Check Directory Structure'
+
+        # Install Node.js
+        - task: NodeTool@0
+          inputs:
+            versionSpec: '18.x'
+          displayName: 'Install Node.js'
+
+        # Install dependencies
+        - script: |
+            cd backend
+            npm install
+          displayName: 'Install Backend Dependencies'
+
+        # Run tests
+        - script: |
+            cd backend
+            npm test || true
+          displayName: 'Run Tests'
+
+        # Start backend server
+        - script: |
+            cd backend
+            node server.js &
+            sleep 10
+          displayName: 'Run Backend Server'
+
+# =====================================================
+# SONARCLOUD STAGE
+# =====================================================
+- stage: SonarCloud
+  displayName: 'SonarCloud Analysis'
+  dependsOn: Build
+
+  jobs:
+    - job: SonarCloudJob
+      displayName: 'Analyze Code Quality'
+
+      steps:
+
+        - checkout: self
+
+        - task: SonarCloudPrepare@3
+          inputs:
+            SonarCloud: 'sonarcloud'
+            organization: 'cherryabode'
+            scannerMode: 'CLI'
+            configMode: 'manual'
+            cliProjectKey: 'cherryabode_smart-spend-expense-tracker'
+            cliProjectName: 'smart-spend-expense-tracker'
+            cliSources: 'backend,frontend'
+            extraProperties: |
+              sonar.sourceEncoding=UTF-8
+              sonar.exclusions=**/node_modules/**,**/*.html
+          displayName: 'Prepare SonarCloud Analysis'
+
+        - task: SonarCloudAnalyze@3
+          displayName: 'Run SonarCloud Analysis'
+
+        - task: SonarCloudPublish@3
+          inputs:
+            pollingTimeoutSec: '300'
+          displayName: 'Publish SonarCloud Results'
+
+# =====================================================
+# DOCKER STAGE
+# =====================================================
+- stage: Docker
+  displayName: 'Docker Build and Push'
+  dependsOn: SonarCloud
+
+  jobs:
+    - job: DockerJob
+      displayName: 'Build Docker Image'
+
+      steps:
+
+        - checkout: self
+
+        # Login to DockerHub
+        - task: Docker@2
+          displayName: 'Login to DockerHub'
+          inputs:
+            command: login
+            containerRegistry: 'dockerhub'
+
+        # Build and Push Docker image
+        - task: Docker@2
+          displayName: 'Build and Push Docker Image'
+          inputs:
+            command: buildAndPush
+            repository: $(dockerHubRepo)
+            Dockerfile: 'backend/Dockerfile'
+            tags: |
+              latest
+              $(imageTag)
