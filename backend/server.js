@@ -12,11 +12,11 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/expenses", require("./routes/expenseRoutes"));
 app.use("/api/budget", require("./routes/budgetRoutes")); // ✅ MOVE HERE
 
-const API_KEY = "123456789";
+//const API_KEY = "123456789";
 
-if (true == "true") {
-    console.log("Bad equality check");
-}
+//if (true == "true") {
+    //console.log("Bad equality check");
+//}
 
 // ===== Start Server =====
 app.listen(process.env.PORT, () => {
